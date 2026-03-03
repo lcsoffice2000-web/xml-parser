@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>המרת חשבוניות XML → Excel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;800&family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0066FF;
+            --primary-dark: #0052CC;
+            --secondary: #FF6B35;
+            --success: #00C896;
+            --error: #FF3366;
+            --bg-main: #F8F9FD;
+            --bg-card: #FFFFFF;
+            --text-primary: #1A1F36;
+            --text-secondary: #697386;
+            --border: #E3E8EE;
+        }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(0, 102, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255, 107, 53, 0.03) 0%, transparent 50%);
+        }
+
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 48px;
+            animation: fadeInDown 0.6s ease;
+        }
+
+        h1 {
+            font-family: 'Rubik', sans-serif;
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+        }
+
+        .tagline {
+            font-size: 18px;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 
+                0 4px 6px rgba(0, 0, 0, 0.02),
+                0 12px 24px rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--border);
+            animation: fadeInUp 0.6s ease 0.2s both;
+        }
+
+        .upload-zone {
+            position: relative;
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            padding: 60px 30px;
+            text-align: center;
+            background: linear-gradient(135deg, #F8F9FD 0%, #FFFFFF 100%);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-bottom: 32px;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, #F0F4FF 0%, #FFFFFF 100%);
+            transform: translateY(-2px);
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--primary);
+            background: #F0F4FF;
+            border-width: 3px;
+        }
+
+        .upload-icon {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            box-shadow: 0 8px 16px rgba(0, 102, 255, 0.2);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .upload-text {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .files-list {
+            margin-bottom: 24px;
+            display: none;
+        }
+
+        .files-list.show {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: #F8F9FD;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .file-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-size {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .file-status {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .file-status.ready { background: #E3F2E8; color: var(--success); }
+        .file-status.processing { background: #FFF4E6; color: #FF9500; }
+        .file-status.done { background: #E8F5E9; color: var(--success); }
+        .file-status.failed { background: #FFEBEE; color: var(--error); }
+
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        button {
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: 'Heebo', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        button:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 102, 255, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 102, 255, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #F8F9FD;
+            color: var(--text-secondary);
+            border: 2px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .alert {
+            padding: 16px 20px;
+            border-radius: 12px;
+            display: none;
+            animation: slideIn 0.4s ease;
+            margin-bottom: 16px;
+        }
+
+        .alert.show {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .alert-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .alert.success {
+            background: #E8F5E9;
+            color: #2E7D32;
+            border: 1px solid #C8E6C9;
+        }
+
+        .alert.error {
+            background: #FFEBEE;
+            color: #C62828;
+            border: 1px solid #FFCDD2;
+        }
+
+        .alert.info {
+            background: #E3F2FD;
+            color: #1565C0;
+            border: 1px solid #BBDEFB;
+        }
+
+        .loader {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 48px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            animation: fadeIn 0.6s ease 0.4s both;
+        }
+
+        @media (max-width: 640px) {
+            .card {
+                padding: 24px;
+            }
+            h1 {
+                font-size: 32px;
+            }
+            .actions {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>המרת חשבוניות XML</h1>
+            <p class="tagline">המרה מהירה לקבצי Excel מעוצבים</p>
+        </header>
+
+        <div class="card">
+            <div class="upload-zone" id="uploadZone">
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">בחר קבצי XML או גרור לכאן</div>
+                <div class="upload-hint">תמיכה בקובץ בודד או העלאה מרובה</div>
+                <input type="file" id="fileInput" accept=".xml" multiple>
+            </div>
+
+            <div class="files-list" id="filesList"></div>
+
+            <div class="actions">
+                <button class="btn-primary" id="convertBtn" disabled>
+                    <span id="btnText">המר לאקסל</span>
+                </button>
+                <button class="btn-secondary" id="resetBtn">איפוס</button>
+            </div>
+
+            <div class="alert" id="alert">
+                <span class="alert-icon" id="alertIcon"></span>
+                <span id="alertText"></span>
+            </div>
+        </div>
+
+        <footer>
+            Smart Business © 2026
+        </footer>
+    </div>
+
+    <script>
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const filesList = document.getElementById('filesList');
+        const convertBtn = document.getElementById('convertBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const btnText = document.getElementById('btnText');
+        const alert = document.getElementById('alert');
+        const alertIcon = document.getElementById('alertIcon');
+        const alertText = document.getElementById('alertText');
+
+        let selectedFiles = [];
+
+        uploadZone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(Array.from(e.target.files));
+        });
+
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            handleFiles(Array.from(e.dataTransfer.files));
+        });
+
+        function handleFiles(files) {
+            selectedFiles = files.filter(f => f.name.endsWith('.xml'));
+            
+            if (selectedFiles.length === 0) {
+                showAlert('error', '❌', 'אנא בחר קבצי XML תקינים');
+                return;
+            }
+
+            renderFilesList();
+            convertBtn.disabled = false;
+            hideAlert();
+        }
+
+        function renderFilesList() {
+            filesList.innerHTML = selectedFiles.map((file, index) => `
+                <div class="file-item" id="file-${index}">
+                    <div class="file-icon">📄</div>
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${formatSize(file.size)}</div>
+                    </div>
+                    <span class="file-status ready">מוכן</span>
+                </div>
+            `).join('');
+            filesList.classList.add('show');
+        }
+
+        convertBtn.addEventListener('click', async () => {
+            convertBtn.disabled = true;
+            btnText.innerHTML = '<span class="loader"></span>מעבד...';
+
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                const statusEl = document.querySelector(`#file-${i} .file-status`);
+                
+                statusEl.className = 'file-status processing';
+                statusEl.textContent = 'מעבד...';
+
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    const response = await fetch('/api/convert', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) throw new Error(await response.text());
+
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = file.name.replace('.xml', '.xlsx');
+                    a.click();
+                    URL.revokeObjectURL(url);
+
+                    statusEl.className = 'file-status done';
+                    statusEl.textContent = '✓ הושלם';
+                } catch (error) {
+                    statusEl.className = 'file-status failed';
+                    statusEl.textContent = '✗ שגיאה';
+                }
+            }
+
+            btnText.textContent = 'המר לאקסל';
+            convertBtn.disabled = false;
+            showAlert('success', '✓', `${selectedFiles.length} קבצים הומרו בהצלחה!`);
+        });
+
+        resetBtn.addEventListener('click', () => {
+            fileInput.value = '';
+            selectedFiles = [];
+            filesList.classList.remove('show');
+            filesList.innerHTML = '';
+            convertBtn.disabled = true;
+            hideAlert();
+        });
+
+        function showAlert(type, icon, text) {
+            alert.className = `alert show ${type}`;
+            alertIcon.textContent = icon;
+            alertText.textContent = text;
+        }
+
+        function hideAlert() {
+            alert.classList.remove('show');
+        }
+
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>
