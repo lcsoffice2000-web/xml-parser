@@ -13,6 +13,7 @@ from openpyxl import Workbook
 import re
 import io
 import os
+from datetime import date
 
 app = Flask(__name__)
 CORS(app)
@@ -23,7 +24,11 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 @app.route('/')
 def index():
     """Serve the main HTML page"""
-    return send_from_directory('.', 'index_beautiful.html')
+    # Serve whichever HTML file is present in the repo
+    for candidate in ('index_beautiful.html', 'index.html'):
+        if os.path.exists(candidate):
+            return send_from_directory('.', candidate)
+    return 'HTML file not found', 404
 
 @app.route('/api/convert', methods=['POST'])
 def convert_xml_to_excel():
@@ -217,7 +222,14 @@ def create_excel_in_memory(data_rows):
     
     for col_idx, header in enumerate(headers, start=1):
         ws.cell(row=1, column=col_idx, value=header)
-    
+
+    # Skip rows with zero price
+    data_rows = [d for d in data_rows if float(d['price']) != 0]
+
+    # Next billing date: the 15th of the current month, DD/MM/YYYY
+    today = date.today()
+    next_billing_date = f"15/{today.month:02d}/{today.year}"
+
     # Data rows
     for row_idx, data in enumerate(data_rows, start=2):
         ws.cell(row=row_idx, column=2, value=data['customer_name'])
@@ -231,6 +243,11 @@ def create_excel_in_memory(data_rows):
         ws.cell(row=row_idx, column=19, value=1)  # תדירות
         ws.cell(row=row_idx, column=20, value=data['quantity'])
         ws.cell(row=row_idx, column=21, value=data['price'])
+
+        # תאריך החיוב הבא - written as text so DD/MM/YYYY is preserved
+        billing_date_cell = ws.cell(row=row_idx, column=22, value=next_billing_date)
+        billing_date_cell.number_format = '@'
+
         ws.cell(row=row_idx, column=23, value=data['billing_cycles'])
         ws.cell(row=row_idx, column=24, value=data['document_only'])
         ws.cell(row=row_idx, column=25, value=data['document_type'])
